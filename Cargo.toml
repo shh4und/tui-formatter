@@ -1,0 +1,13 @@
+[package]
+name = "tui-formatter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+crossterm = "0.29.0"
+ratatui = "0.30.0"
+tui-input = "0.15.0"
+
+[[bin]]
+name = "tui-formatter"
+path = "src/main.rs"
