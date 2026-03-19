@@ -1,10 +1,9 @@
 # TUI Text Processor
 
-Template básico de aplicação TUI usando Ratatui
-
+Processador de Texto SQL (por enquanto?) usando [ratatui](https://ratatui.rs/) como interface no terminal e a crate [sqlparser](https://docs.rs/sqlparser/latest/sqlparser/) como analisador léxico e sintático 
 ## Pré-requisitos
 
-É necessário possuir o toolchain do Rust instalado no sistema (`rustc` e `cargo`).
+Para compilar e executar é necessário possuir o toolchain do Rust instalado no sistema (`rustc` e `cargo`).
 Para instalar, utilize o script oficial (disponível em [rust-lang.org](https://rust-lang.org/tools/install/)):
 
 ```bash
@@ -20,4 +19,4 @@ cargo run
 ```bash
 cargo build --release
 ```
-O binário finalizado ficará localizado em target/release/tui_app_rust.
+O binário executável finalizado ficará localizado em target/release/
