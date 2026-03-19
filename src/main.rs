@@ -44,7 +44,7 @@ impl<'a> App<'a> {
         textarea.set_block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Digite a Query SQL (Ctrl+Enter para processar)"),
+                .title("Digite a Query SQL"),
         );
 
         Self {
@@ -203,9 +203,9 @@ impl<'a> App<'a> {
         if total == 0 {
             return String::new();
         }
-        
+
         let percentage = (current as f32 / total as f32 * 100.0) as u32;
-        
+
         if current == 0 {
             "▼".to_string()
         } else if current == total - 1 {
@@ -226,7 +226,7 @@ impl<'a> App<'a> {
         self.textarea.set_block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Digite a Query SQL (Ctrl+Enter para processar)"),
+                .title("Digite a Query SQL"),
         );
         self.table_data = TableSQL::new();
         self.focus = Focus::Input;
@@ -247,7 +247,7 @@ impl<'a> App<'a> {
             .split(frame.area());
 
         // --- HEADER ---
-        let header = Paragraph::new("TUI Text Processor - SQL INSERT Formatter")
+        let header = Paragraph::new("TUI Text Processor")
             .style(Style::default().add_modifier(Modifier::BOLD))
             .alignment(Alignment::Center);
         frame.render_widget(header, main_layout[0]);
@@ -305,11 +305,11 @@ impl<'a> App<'a> {
         let table_header = Row::new(header_cells).height(1).bottom_margin(1);
 
         let rows = self.table_data.to_ratatui_rows();
-        
+
         // Calcula quantas linhas podem ser visualizadas na área da tabela
         // Reserva espaço para header (1) e border (1) = 2 linhas
         let available_height = main_layout[3].height.saturating_sub(2) as usize;
-        
+
         // Aplica scroll: pega apenas as linhas visíveis a partir de table_scroll
         let visible_rows: Vec<Row> = rows
             .into_iter()
@@ -320,9 +320,9 @@ impl<'a> App<'a> {
         let table = Table::new(
             visible_rows,
             [
-                Constraint::Percentage(33),
                 Constraint::Percentage(50),
-                Constraint::Percentage(17),
+                Constraint::Percentage(50),
+                // Constraint::Percentage(17),
             ],
         )
         .header(table_header)
@@ -340,9 +340,9 @@ impl<'a> App<'a> {
 
         // --- FOOTER ---
         let footer_text = vec![
-            Line::raw("Tab: Alternar Foco | Ctrl+Enter: Processar | Esc: Sair | ↑/↓: Scroll Tabela | Home/End: Ir para início/fim"),
+            Line::raw("Tab: Alternar Foco | Enter: Executar Ação | Esc: Sair | ↑/↓: Scroll Tabela | Home/End: Ir para início/fim"),
             Line::raw(
-                "Atalhos do Editor: Setas, Home/End, Backspace/Delete, Ctrl+W, Ctrl+A, Ctrl+E suportados nativamente.",
+                "Atalhos do Editor: Setas, Home/End, Backspace/Delete, Ctrl+W, Ctrl+A, Ctrl+E",
             ),
         ];
         let footer = Paragraph::new(footer_text)
