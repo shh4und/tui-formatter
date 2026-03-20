@@ -33,6 +33,8 @@ struct App<'a> {
     table_data: TableSQL,
     focus: Focus,
     exit: bool,
+    /// Posição vertical de scroll da tabela (primeira linha visível)
+    table_scroll: usize,
 }
 
 impl<'a> App<'a> {
@@ -50,6 +52,7 @@ impl<'a> App<'a> {
             table_data: TableSQL::new(),
             focus: Focus::Input,
             exit: false,
+            table_scroll: 0,
         }
     }
 
@@ -119,6 +122,33 @@ impl<'a> App<'a> {
                             return Ok(());
                         }
                     }
+                    // Navegação vertical na tabela com Setas (apenas se houver linhas)
+                    KeyCode::Up => {
+                        if self.table_scroll > 0 {
+                            self.table_scroll -= 1;
+                        }
+                        return Ok(());
+                    }
+                    KeyCode::Down => {
+                        let max_rows = self.table_data.rows.len();
+                        // Limita o scroll para não ultrapassar o número de linhas
+                        // Deve deixar espaço para a última linha ficar visível
+                        if max_rows > 0 && self.table_scroll < max_rows.saturating_sub(1) {
+                            self.table_scroll += 1;
+                        }
+                        return Ok(());
+                    }
+                    KeyCode::Home => {
+                        self.table_scroll = 0;
+                        return Ok(());
+                    }
+                    KeyCode::End => {
+                        let max_rows = self.table_data.rows.len();
+                        if max_rows > 0 {
+                            self.table_scroll = max_rows.saturating_sub(1);
+                        }
+                        return Ok(());
+                    }
                     _ => {}
                 }
             }
@@ -168,6 +198,23 @@ impl<'a> App<'a> {
         }
     }
 
+    /// Gera um indicador visual de scroll (▲▼ ou similar)
+    fn scroll_indicator(current: usize, total: usize) -> String {
+        if total == 0 {
+            return String::new();
+        }
+        
+        let percentage = (current as f32 / total as f32 * 100.0) as u32;
+        
+        if current == 0 {
+            "▼".to_string()
+        } else if current == total - 1 {
+            "▲".to_string()
+        } else {
+            format!("{}%", percentage)
+        }
+    }
+
     fn process_data(&mut self) {
         let text = self.get_full_input();
         self.table_data = table_parsing::parsing_input(&text);
@@ -183,6 +230,7 @@ impl<'a> App<'a> {
         );
         self.table_data = TableSQL::new();
         self.focus = Focus::Input;
+        self.table_scroll = 0;
     }
 
     /// Responsável pelo pipeline de UI no modo imediato.
@@ -257,9 +305,20 @@ impl<'a> App<'a> {
         let table_header = Row::new(header_cells).height(1).bottom_margin(1);
 
         let rows = self.table_data.to_ratatui_rows();
+        
+        // Calcula quantas linhas podem ser visualizadas na área da tabela
+        // Reserva espaço para header (1) e border (1) = 2 linhas
+        let available_height = main_layout[3].height.saturating_sub(2) as usize;
+        
+        // Aplica scroll: pega apenas as linhas visíveis a partir de table_scroll
+        let visible_rows: Vec<Row> = rows
+            .into_iter()
+            .skip(self.table_scroll)
+            .take(available_height)
+            .collect();
 
         let table = Table::new(
-            rows,
+            visible_rows,
             [
                 Constraint::Percentage(33),
                 Constraint::Percentage(50),
@@ -269,14 +328,19 @@ impl<'a> App<'a> {
         .header(table_header)
         .block(
             Block::bordered()
-                .title("Output")
+                .title(format!(
+                    "Output (linha {}/{}) {}",
+                    self.table_scroll + 1,
+                    self.table_data.rows.len().max(1),
+                    Self::scroll_indicator(self.table_scroll, self.table_data.rows.len())
+                ))
                 .border_style(Style::default().fg(Color::Green)),
         );
         frame.render_widget(table, main_layout[3]);
 
         // --- FOOTER ---
         let footer_text = vec![
-            Line::raw("Tab: Alternar Foco | Ctrl+Enter: Processar | Esc: Sair"),
+            Line::raw("Tab: Alternar Foco | Ctrl+Enter: Processar | Esc: Sair | ↑/↓: Scroll Tabela | Home/End: Ir para início/fim"),
             Line::raw(
                 "Atalhos do Editor: Setas, Home/End, Backspace/Delete, Ctrl+W, Ctrl+A, Ctrl+E suportados nativamente.",
             ),
