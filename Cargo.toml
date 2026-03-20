@@ -12,3 +12,19 @@ tui-textarea = "0.7.0"
 [[bin]]
 name = "tui-formatter"
 path = "src/main.rs"
+
+[package.metadata.cross.target.x86_64-pc-windows-gnu]
+env.passthrough = [
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "NO_PROXY",
+    "no_proxy"
+]
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "winbase", "consoleapi", "winsock2"] }
+
+[target.x86_64-pc-windows-gnu]
+rustflags = ["-C", "link-arg=-lws2_32"]
