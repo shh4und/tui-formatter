@@ -7,9 +7,10 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
 };
 use std::io;
+mod table_parsing;
+use table_parsing::TableSQL;
 use tui_input::Input;
 use tui_input::backend::crossterm::EventHandler;
-
 /// Representa qual elemento possui o foco atual na interface.
 #[derive(PartialEq)]
 enum Focus {
@@ -21,7 +22,7 @@ enum Focus {
 /// Estado global da aplicação.
 struct App {
     input: Input,
-    table_data: Vec<Vec<String>>,
+    table_data: TableSQL,
     focus: Focus,
     exit: bool,
 }
@@ -30,7 +31,7 @@ impl App {
     fn new() -> Self {
         Self {
             input: Input::default(),
-            table_data: Vec::new(),
+            table_data: TableSQL::new(),
             focus: Focus::Input,
             exit: false,
         }
@@ -102,31 +103,14 @@ impl App {
     /// Lógica de injeção de dados na tabela (Equivalente à on_button_pressed -> process).
     fn process_data(&mut self) {
         let text = self.input.value().to_string();
-        let char_count = text.chars().count();
 
-        self.table_data = vec![
-            vec![
-                text,
-                format!("Processado: {} chars", char_count),
-                "Status: OK".to_string(),
-            ],
-            vec![
-                "Linha 2".to_string(),
-                "Dados 2".to_string(),
-                "Info 2".to_string(),
-            ],
-            vec![
-                "Linha 3".to_string(),
-                "Dados 3".to_string(),
-                "Info 3".to_string(),
-            ],
-        ];
+        self.table_data = table_parsing::parsing_input(&text);
     }
 
     /// Lógica de limpeza de estado (Equivalente à on_button_pressed -> clear).
     fn clear_data(&mut self) {
         self.input.reset();
-        self.table_data.clear();
+        self.table_data = TableSQL::new();
         self.focus = Focus::Input;
     }
 
@@ -200,18 +184,13 @@ impl App {
         frame.render_widget(clear_btn, btn_layout[1]);
 
         // --- DATA TABLE ---
-        let header_cells = ["Colunas", "Valores", "Info"].iter().map(|h| {
+        let header_cells = ["Colunas", "Valores"].iter().map(|h| {
             Cell::from(Text::from(*h).alignment(Alignment::Left))
                 .style(Style::default().add_modifier(Modifier::BOLD))
         });
         let table_header = Row::new(header_cells).height(1).bottom_margin(1);
 
-        let rows = self.table_data.iter().map(|row_data| {
-            let cells = row_data
-                .iter()
-                .map(|c| Cell::from(Text::from(c.as_str()).alignment(Alignment::Left)));
-            Row::new(cells).height(1)
-        });
+        let rows = self.table_data.to_ratatui_rows();
 
         let table = Table::new(
             rows,
