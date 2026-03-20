@@ -1,5 +1,4 @@
 use ratatui::{
-    style::{Modifier, Style},
     text::Text,
     widgets::{Cell, Row},
 };
@@ -26,7 +25,7 @@ impl TableSQL {
     }
 
     /// Converte os dados internos em `Row`s prontos para o widget `Table` do ratatui.
-    pub fn to_ratatui_rows(&self) -> Vec<Row> {
+    pub fn to_ratatui_rows(&self) -> Vec<Row<'_>> {
         self.rows
             .iter()
             .map(|r| {
