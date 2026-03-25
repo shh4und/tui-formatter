@@ -241,6 +241,7 @@ impl<'a> App<'a> {
                 Constraint::Length(1), // Header
                 Constraint::Min(5),    // Input Block
                 Constraint::Length(3), // Buttons Block
+                Constraint::Length(3),     // Info Block
                 Constraint::Min(5),    // Table Block
                 Constraint::Length(2), // Footer
             ])
@@ -297,6 +298,16 @@ impl<'a> App<'a> {
             .block(Block::default().borders(Borders::ALL).style(clear_style));
         frame.render_widget(clear_btn, btn_layout[1]);
 
+        // TABLE INFO
+        let table_name = self.table_data.name.to_string();
+        let info_text = vec![
+            Line::raw(format!("Nome da Tabela: {}", table_name)),
+        ];
+        let table_info = Paragraph::new(info_text)
+            .alignment(Alignment::Left)
+            .block(Block::default().borders(Borders::ALL));
+        frame.render_widget(table_info, main_layout[3]);
+
         // --- DATA TABLE ---
         let header_cells = ["Colunas", "Valores"].iter().map(|h| {
             Cell::from(Text::from(*h).alignment(Alignment::Left))
@@ -308,7 +319,7 @@ impl<'a> App<'a> {
 
         // Calcula quantas linhas podem ser visualizadas na área da tabela
         // Reserva espaço para header (1) e border (1) = 2 linhas
-        let available_height = main_layout[3].height.saturating_sub(2) as usize;
+        let available_height = main_layout[4].height.saturating_sub(2) as usize;
 
         // Aplica scroll: pega apenas as linhas visíveis a partir de table_scroll
         let visible_rows: Vec<Row> = rows
@@ -336,7 +347,7 @@ impl<'a> App<'a> {
                 ))
                 .border_style(Style::default().fg(Color::Green)),
         );
-        frame.render_widget(table, main_layout[3]);
+        frame.render_widget(table, main_layout[4]);
 
         // --- FOOTER ---
         let footer_text = vec![
@@ -348,7 +359,7 @@ impl<'a> App<'a> {
         let footer = Paragraph::new(footer_text)
             .style(Style::default().fg(Color::DarkGray))
             .alignment(Alignment::Left);
-        frame.render_widget(footer, main_layout[4]);
+        frame.render_widget(footer, main_layout[5]);
     }
 }
 
