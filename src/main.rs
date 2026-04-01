@@ -1,12 +1,12 @@
 use ratatui::{
-    crossterm::{
-        execute,
-        event::{
-            DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEventKind,
-            KeyModifiers, self as crossterm_event,
-        },
-    },
     DefaultTerminal, Frame,
+    crossterm::{
+        event::{
+            self as crossterm_event, DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode,
+            KeyEventKind, KeyModifiers,
+        },
+        execute,
+    },
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Text},
@@ -35,6 +35,8 @@ struct App<'a> {
     exit: bool,
     /// Posição vertical de scroll da tabela (primeira linha visível)
     table_scroll: usize,
+    /// Mensagem de erro (se houver)
+    error_message: Option<String>,
 }
 
 impl<'a> App<'a> {
@@ -53,6 +55,7 @@ impl<'a> App<'a> {
             focus: Focus::Input,
             exit: false,
             table_scroll: 0,
+            error_message: None,
         }
     }
 
@@ -75,10 +78,19 @@ impl<'a> App<'a> {
     /// Limpa o texto vindo da área de transferência.
     fn sanitize_paste(input: &str) -> String {
         input
+            // Remove BOM UTF-8
+            .trim_start_matches('\u{FEFF}')
+            // Normaliza delimitadores de linha
             .replace("\r\n", "\n")
             .replace('\r', "\n")
+            // Remove caracteres de controle, mas mantém tabs e quebras de linha
             .chars()
-            .filter(|&c| (c == '\n' || c == '\t' || !c.is_control()) && c != '\u{FEFF}')
+            .filter(|&c| {
+                c == '\n'
+                    || c == '\t'
+                    || (!c.is_ascii_control() && !c.is_control())
+                    || (c.is_ascii_whitespace() && c != '\r')
+            })
             .collect()
     }
 
@@ -157,6 +169,8 @@ impl<'a> App<'a> {
                 if self.focus == Focus::Input {
                     let clean_data = Self::sanitize_paste(data);
                     self.textarea.insert_str(&clean_data);
+                    // Limpa erro anterior ao começar a digitar
+                    self.error_message = None;
                 }
                 return Ok(());
             }
@@ -169,6 +183,8 @@ impl<'a> App<'a> {
         // backspace, delete, digitação normal, navegação por palavras (Ctrl+Left/Right), etc.
         if self.focus == Focus::Input {
             self.textarea.input(event);
+            // Limpa erro anterior ao começar a digitar
+            self.error_message = None;
         }
 
         Ok(())
@@ -217,7 +233,19 @@ impl<'a> App<'a> {
 
     fn process_data(&mut self) {
         let text = self.get_full_input();
-        self.table_data = table_parsing::parsing_input(&text);
+
+        // Tenta fazer o parsing e captura qualquer erro
+        match table_parsing::parsing_input(&text) {
+            Ok(table_data) => {
+                self.table_data = table_data;
+                self.error_message = None;
+                self.table_scroll = 0;
+            }
+            Err(err) => {
+                self.error_message = Some(err);
+                self.table_data = TableSQL::new();
+            }
+        }
     }
 
     fn clear_data(&mut self) {
@@ -231,6 +259,7 @@ impl<'a> App<'a> {
         self.table_data = TableSQL::new();
         self.focus = Focus::Input;
         self.table_scroll = 0;
+        self.error_message = None;
     }
 
     /// Responsável pelo pipeline de UI no modo imediato.
@@ -241,7 +270,7 @@ impl<'a> App<'a> {
                 Constraint::Length(1), // Header
                 Constraint::Min(5),    // Input Block
                 Constraint::Length(3), // Buttons Block
-                Constraint::Length(3),     // Info Block
+                Constraint::Length(3), // Info Block
                 Constraint::Min(5),    // Table Block
                 Constraint::Length(2), // Footer
             ])
@@ -298,14 +327,27 @@ impl<'a> App<'a> {
             .block(Block::default().borders(Borders::ALL).style(clear_style));
         frame.render_widget(clear_btn, btn_layout[1]);
 
-        // TABLE INFO
-        let table_name = self.table_data.name.to_string();
-        let info_text = vec![
-            Line::raw(format!("Nome da Tabela: {}", table_name)),
-        ];
-        let table_info = Paragraph::new(info_text)
+        // --- INFO/ERROR BLOCK ---
+        let info_content = if let Some(err) = &self.error_message {
+            // Mostra erro em vermelho
+            vec![
+                Line::raw(format!("❌ ERRO: {}", err))
+                    .style(Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)),
+            ]
+        } else {
+            // Mostra informações normais
+            let table_name = self.table_data.name.to_string();
+            let cols_len = self.table_data.cols_len;
+            let values_len = self.table_data.values_len;
+            vec![Line::raw(format!(
+                "✓ Nome da Tabela: {} | Colunas/Valores: {}/{}",
+                table_name, cols_len, values_len
+            ))]
+        };
+
+        let table_info = Paragraph::new(info_content)
             .alignment(Alignment::Left)
-            .block(Block::default().borders(Borders::ALL));
+            .block(Block::default().title("Info").borders(Borders::ALL));
         frame.render_widget(table_info, main_layout[3]);
 
         // --- DATA TABLE ---
@@ -351,7 +393,9 @@ impl<'a> App<'a> {
 
         // --- FOOTER ---
         let footer_text = vec![
-            Line::raw("Tab: Alternar Foco | Enter: Executar Ação | Esc: Sair | ↑/↓: Scroll Tabela | Home/End: Ir para início/fim"),
+            Line::raw(
+                "Tab: Alternar Foco | Enter: Executar Ação | Esc: Sair | ↑/↓: Scroll Tabela | Home/End: Ir para início/fim",
+            ),
             Line::raw(
                 "Atalhos do Editor: Setas, Home/End, Backspace/Delete, Ctrl+W, Ctrl+A, Ctrl+E",
             ),
