@@ -12,6 +12,7 @@ use ratatui::{
     text::{Line, Text},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
 };
+
 use std::io;
 use tui_textarea::TextArea;
 
@@ -85,12 +86,7 @@ impl<'a> App<'a> {
             .replace('\r', "\n")
             // Remove caracteres de controle, mas mantém tabs e quebras de linha
             .chars()
-            .filter(|&c| {
-                c == '\n'
-                    || c == '\t'
-                    || (!c.is_ascii_control() && !c.is_control())
-                    || (c.is_ascii_whitespace() && c != '\r')
-            })
+            .filter(|&c| c == '\n' || c == '\t' || (!c.is_ascii_control() && !c.is_control()))
             .collect()
     }
 
@@ -105,12 +101,9 @@ impl<'a> App<'a> {
                         self.exit = true;
                         return Ok(());
                     }
-                    KeyCode::Tab => {
-                        self.cycle_focus_forward();
-                        return Ok(());
-                    }
+
                     KeyCode::BackTab => {
-                        self.cycle_focus_backward();
+                        self.cycle_focus_forward();
                         return Ok(());
                     }
                     // Atalho Global: Ctrl+Enter para processar dados
@@ -198,14 +191,6 @@ impl<'a> App<'a> {
         };
     }
 
-    fn cycle_focus_backward(&mut self) {
-        self.focus = match self.focus {
-            Focus::Input => Focus::ClearBtn,
-            Focus::ProcessBtn => Focus::Input,
-            Focus::ClearBtn => Focus::ProcessBtn,
-        };
-    }
-
     fn handle_enter(&mut self) {
         match self.focus {
             Focus::ProcessBtn => self.process_data(),
@@ -246,6 +231,8 @@ impl<'a> App<'a> {
                 self.table_data = TableSQL::new();
             }
         }
+
+        self.focus = Focus::ProcessBtn;
     }
 
     fn clear_data(&mut self) {
@@ -272,7 +259,7 @@ impl<'a> App<'a> {
                 Constraint::Length(3), // Buttons Block
                 Constraint::Length(3), // Info Block
                 Constraint::Min(5),    // Table Block
-                Constraint::Length(2), // Footer
+                Constraint::Length(3), // Footer
             ])
             .split(frame.area());
 
@@ -340,7 +327,7 @@ impl<'a> App<'a> {
             let cols_len = self.table_data.cols_len;
             let values_len = self.table_data.values_len;
             vec![Line::raw(format!(
-                "✓ Nome da Tabela: {} | Colunas/Valores: {}/{}",
+                "Nome da Tabela: {} | Núm. de Colunas/Valores: {}/{}",
                 table_name, cols_len, values_len
             ))]
         };
@@ -393,15 +380,14 @@ impl<'a> App<'a> {
 
         // --- FOOTER ---
         let footer_text = vec![
+            Line::raw(""),
             Line::raw(
-                "Tab: Alternar Foco | Enter: Executar Ação | Esc: Sair | ↑/↓: Scroll Tabela | Home/End: Ir para início/fim",
+                "Atalhos da Interface: SHIFT + TAB: Alternar Foco | ENTER: Executar Ação | ESC: Sair | ↑/↓: Scroll Tabela | HOME/END: Início/fim Tabela",
             ),
-            Line::raw(
-                "Atalhos do Editor: Setas, Home/End, Backspace/Delete, Ctrl+W, Ctrl+A, Ctrl+E",
-            ),
+            Line::raw("Atalhos do Editor: CTRL+W: Apaga palavra, CTRL+A/E: Início/Fim da linha | Comuns: Setas, TAB, BACKSPACE/DEL"),
         ];
         let footer = Paragraph::new(footer_text)
-            .style(Style::default().fg(Color::DarkGray))
+            .style(Style::default().fg(Color::Gray))
             .alignment(Alignment::Left);
         frame.render_widget(footer, main_layout[5]);
     }
