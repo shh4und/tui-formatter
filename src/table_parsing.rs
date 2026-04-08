@@ -45,30 +45,6 @@ impl TableSQL {
     }
 }
 
-/// Normaliza o input SQL removendo problemas de encoding e delimitadores de linha
-fn normalize_sql_input(input: &str) -> String {
-    input
-        // Remove BOM UTF-8 e variações
-        .trim_start_matches('\u{FEFF}')
-        // Normaliza delimitadores de linha (Windows: \r\n, Mac antigo: \r, Unix: \n)
-        .replace("\r\n", "\n")
-        .replace('\r', "\n")
-        // Remove caracteres de controle indesejados, mas mantém espaços úteis
-        .chars()
-        .filter(|&c| {
-            // Permite: letras, dígitos, pontuação comum, espaços, tabs, quebras de linha, acentos
-            c.is_ascii_alphanumeric()
-                || c.is_ascii_punctuation()
-                || c.is_ascii_whitespace()
-                || !c.is_ascii_control()
-        })
-        .collect::<String>()
-        // Normaliza múltiplos espaços/tabs (mas mantém quebras de linha)
-        .lines()
-        .map(|line| line.trim_end())
-        .collect::<Vec<&str>>()
-        .join("\n")
-}
 
 pub fn parsing_input(input: &str) -> Result<TableSQL, String> {
     let mut table = TableSQL::new();
@@ -78,12 +54,12 @@ pub fn parsing_input(input: &str) -> Result<TableSQL, String> {
         return Err("A query SQL está vazia. Digite uma query INSERT válida.".to_string());
     }
 
-    // Normaliza o input antes de fazer parsing
-    let normalized_input = normalize_sql_input(input);
+    // // Normaliza o input antes de fazer parsing
+    // let normalized_input = normalize_sql_input(input);
 
     // Parser com dialeto genérico (compatível com ANSI SQL)
     let dialect = GenericDialect {};
-    let parser = Parser::new(&dialect).try_with_sql(&normalized_input);
+    let parser = Parser::new(&dialect).try_with_sql(input);
 
     let mut parser = parser.map_err(|e| {
         format!("Erro ao criar parser SQL: {}", e)
